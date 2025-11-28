@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wilde Quantitative Jungian Calculator (Modern Minimal)</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #faf7e6;
+    padding: 20px;
+    line-height: 1.4;
+  }
+
+  h1 { color: #4b2ca0; margin-bottom: 0.5em; }
+
+  .sliders {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  @media(max-width: 700px) {
+    .sliders {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 10px;
+    background: white;
+  }
+
+  .labelrow { display: flex; justify-content: space-between; font-weight: bold; }
+  .nums { font-size: 0.9em; margin-top: 4px; }
+
+  .results { margin-top: 20px; }
+
+  /* bar chart sizing */
+  svg { width: 100%; }
+  .bartext { font-size: 12px; fill: #333; text-anchor: middle; }
+
+
+
+.graph-row {
+  display: grid;
+  grid-template-columns: 1fr auto;  /* bars grow, coupled chart stays compact */
+  gap: 2rem;
+  align-items: start;
+}
+
+
+
+@media (max-width: 700px) {
+  .graph-row {
+    grid-template-columns: 1fr; /* stack vertically */
+  }
+}
+
+/* Keep the coupled-axis SVG pleasantly sized */
+
+#coupledsvg {
+  width: 100%;
+  max-width: 220px;  /* scales up but not absurdly huge */
+  aspect-ratio: 1 / 1;  /* square */
+  height: auto;
+}
+
+.graphic-box {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.graphic-box > legend {
+  padding: 0 6px;
+  font-weight: 600;
+  color: #444;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Wilde Quantitative Jungian Calculator</h1>
+
+<details>
+  <summary><strong>More Info</strong></summary>
+  <p>This is a modernized minimal rewrite of the old Pyjamas-based calculator.</p>
+</details>
+
+<h2>MBTI Preferences</h2>
+
+<div class="sliders">
+
+  <!-- E–I -->
+  <div class="card">
+    <div class="labelrow"><span>E</span><span>I</span></div>
+    <input type="range" min="0" max="100" value="50" id="ei">
+    <div class="nums"><span id="e-val">50</span> / <span id="i-val">50</span></div>
+  </div>
+
+  <!-- S–N -->
+  <div class="card">
+    <div class="labelrow"><span>S</span><span>N</span></div>
+    <input type="range" min="0" max="100" value="50" id="sn">
+    <div class="nums"><span id="s-val">50</span> / <span id="n-val">50</span></div>
+  </div>
+
+  <!-- T–F -->
+  <div class="card">
+    <div class="labelrow"><span>T</span><span>F</span></div>
+    <input type="range" min="0" max="100" value="50" id="tf">
+    <div class="nums"><span id="t-val">50</span> / <span id="f-val">50</span></div>
+  </div>
+
+  <!-- J–P -->
+  <div class="card">
+    <div class="labelrow"><span>J</span><span>P</span></div>
+    <input type="range" min="0" max="100" value="50" id="jp">
+    <div class="nums"><span id="j-val">50</span> / <span id="p-val">50</span></div>
+  </div>
+
+</div>
+
+<br>
+
+<div class="graph-row">
+
+  <fieldset class="graphic-box">
+    <legend>Function Strengths</legend>
+    <svg id="barsvg" viewBox="0 0 600 160"></svg>
+  </fieldset>
+
+  <fieldset class="graphic-box small">
+    <legend>Coupled Attitude Space</legend>
+    <svg id="coupledsvg"
+      viewBox="0 0 200 200"
+      style="background:#fdfdfd;border:1px solid #ccc; ">
+      <defs>
+        <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+          <rect width="25" height="25" fill="none" stroke="#ddd" stroke-width="1" />
+        </pattern>
+      </defs>
+      <rect x="0" y="0" width="200" height="200" fill="url(#grid)" />
+
+      <text x="5" y="15" font-size="12" fill="#888">Ep: Exploration</text>
+      <text x="130" y="15" font-size="12" fill="#888">Ej: Control</text>
+      <text x="5" y="195" font-size="12" fill="#888">Ip: Appraisal</text>
+      <text x="130" y="195" font-size="12" fill="#888">Ij: Focus</text>
+
+      <circle id="dot" cx="100" cy="100" r="5" fill="red"></circle>
+    </svg>
+
+  </fieldset>
+
+</div>
+
+
+<div class="results">
+  <h3>Results</h3>
+  <p><strong>Preferred Modes:</strong> <span id="func-text">?</span></p>
+  <p><strong>Code:</strong> <span id="type-code">????</span></p>
+</div>
+
+<script>
+/* ---------- Helpers ---------- */
+
+function axisValues() {
+  const e = (100 - Number(document.getElementById("ei").value)) / 100;
+  const i = 1 - e;
+  const s = (100 - Number(document.getElementById("sn").value)) / 100;
+  const n = 1 - s;
+  const t = (100 - Number(document.getElementById("tf").value)) / 100;
+  const f = 1 - t;
+  const j = (100 - Number(document.getElementById("jp").value)) / 100;
+  const p = 1 - j;
+
+  return { e, i, s, n, t, f, j, p };
+}
+
+
+
+function computeFunctions(av) {
+  return {
+    Se: (((av.e + av.p) / 2) + av.s) / 2,
+    Ne: (((av.e + av.p) / 2) + av.n) / 2,
+    Te: (((av.e + av.j) / 2) + av.t) / 2,
+    Fe: (((av.e + av.j) / 2) + av.f) / 2,
+    Si: (((av.i + av.j) / 2) + av.s) / 2,
+    Ni: (((av.i + av.j) / 2) + av.n) / 2,
+    Ti: (((av.i + av.p) / 2) + av.t) / 2,
+    Fi: (((av.i + av.p) / 2) + av.f) / 2
+  };
+}
+
+function updateBars(funcs) {
+  const svg = document.getElementById("barsvg");
+  const names = ["Se","Si","Ne","Ni","Te","Ti","Fe","Fi"];
+
+  svg.innerHTML = "";
+
+  names.forEach((name, idx) => {
+    const val = funcs[name];
+    const height = val * 120;  // scale
+    const x = idx * 70 + 20;
+    const y = 140 - height;
+
+    svg.innerHTML += `
+      <rect x="${x}" y="${y}" width="40" height="${height}"
+            fill="hsl(${idx*40},70%,60%)" stroke="#333"></rect>
+      <text x="${x+20}" y="155" class="bartext">${name}</text>
+      <text x="${x+20}" y="${y-5}" class="bartext">${Math.round((val*200)-100)}</text>
+    `;
+  });
+}
+
+function updateDot(av) {
+  const dot = document.getElementById("dot");
+  const x = av.j * 200;
+  const y = 200 - av.e * 200;
+  dot.setAttribute("cx", x);
+  dot.setAttribute("cy", y);
+}
+
+function updateText(funcs) {
+  const sorted = Object.entries(funcs).sort((a,b)=>b[1]-a[1]);
+  const strong = sorted.filter(x => x[1] > 0.5).map(x => {
+    const pct = Math.round((x[1]*200)-100);
+    return `${x[0]} ${pct}%`;
+  }).join(", ");
+  document.getElementById("func-text").textContent = strong || "?";
+}
+
+function typeCode(av) {
+  const pick = (v, a, b) => v === 0.5 ? "X" : (v > 0.5 ? a : b);
+  return pick(av.e,"E","I") + pick(av.s,"S","N") +
+         pick(av.t,"T","F") + pick(av.j,"J","P");
+}
+
+function render() {
+  const av = axisValues();
+  const funcs = computeFunctions(av);
+
+  // update numbers
+  document.getElementById("e-val").textContent = Math.round(av.e*100);
+  document.getElementById("i-val").textContent = Math.round(av.i*100);
+  document.getElementById("s-val").textContent = Math.round(av.s*100);
+  document.getElementById("n-val").textContent = Math.round(av.n*100);
+  document.getElementById("t-val").textContent = Math.round(av.t*100);
+  document.getElementById("f-val").textContent = Math.round(av.f*100);
+  document.getElementById("j-val").textContent = Math.round(av.j*100);
+  document.getElementById("p-val").textContent = Math.round((1-av.j)*100);
+
+  updateBars(funcs);
+  updateDot(av);
+  updateText(funcs);
+  document.getElementById("type-code").textContent = typeCode(av);
+}
+
+document.querySelectorAll("input[type=range]").forEach(r => {
+  r.addEventListener("input", render);
+});
+
+render(); // initial
+</script>
+
+</body>
+</html>
