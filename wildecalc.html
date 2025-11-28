@@ -6,14 +6,28 @@
 <style>
   body {
     font-family: system-ui, sans-serif;
-    background: #faf7e6;
+//    background: #faf7e6;
+
+//    background: #f5f4f2;
+    background: #f4f3ef;
+
+
     padding: 20px;
     line-height: 1.4;
   }
 
-  h1 { color: #4b2ca0; margin-bottom: 0.5em; }
+  h1 {
+    color: #4d3e91;
+    margin-bottom: 0.5em;
+ }
 
 
+a {
+  color: #3d59c8;
+}
+a:hover {
+  color: #2e47a3;
+}
   .sliders {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -41,7 +55,8 @@
 
   /* bar chart sizing */
   svg { width: 100%; }
-  .bartext { font-size: 12px; fill: #333; text-anchor: middle; }
+  .bartext { font-size: 13px; fill: #333; text-anchor: middle; }
+
 
 
 
@@ -55,10 +70,11 @@
 
 
 @media (max-width: 700px) {
-  .graph-row {
+ .graph-row {
     grid-template-columns: 1fr; /* stack vertically */
   }
 }
+
 
 /* Keep the coupled-axis SVG pleasantly sized */
 
@@ -76,10 +92,23 @@
   background: #fff;
 }
 
+
+
 .graphic-box > legend {
   padding: 0 6px;
   font-weight: 600;
   color: #444;
+}
+
+.graphic-box {
+  max-width: 800px;   /* pick your preferred limit */
+  padding-left: 1rem;      /* aligns bar chart with your text content */
+//  margin: 0 auto;     /* centers it nicely */
+}
+
+#barsvg {
+  width: 100%;
+  height: auto;
 }
 
 .num-edit {
@@ -120,6 +149,12 @@
   line-height: 1.28;
 }
 
+.results-box {
+  margin-top: 1.75rem;   /* adjust to taste: 1.25–2rem all look good */
+}
+
+
+
 .results-box ul {
   margin: 6px 0 4px 0;
   padding-left: 20px;
@@ -133,6 +168,8 @@
 .results-box li::marker {
   color: #777;
 }
+
+
 
 </style>
 </head>
@@ -272,16 +309,27 @@ function computeFunctions(av) {
   };
 }
 
+
 function updateBars(funcs) {
   const svg = document.getElementById("barsvg");
   const names = ["Se","Si","Ne","Ni","Te","Ti","Fe","Fi"];
+
+  // pick spacing based on viewport width
+
+  const spacing =
+    window.innerWidth < 400 ? 44 :
+    window.innerWidth < 600 ? 52 :
+    window.innerWidth < 900 ? 62 :
+    70;
+  const totalWidth = spacing * names.length + 40;
+  svg.setAttribute("viewBox", `0 0 ${totalWidth} 160`);
 
   svg.innerHTML = "";
 
   names.forEach((name, idx) => {
     const val = funcs[name];
-    const height = val * 120;  // scale
-    const x = idx * 70 + 20;
+    const height = val * 120;
+    const x = idx * spacing + 20;
     const y = 140 - height;
 
     svg.innerHTML += `
