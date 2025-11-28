@@ -13,10 +13,12 @@
 
   h1 { color: #4b2ca0; margin-bottom: 0.5em; }
 
+
   .sliders {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
+    margin-left: 4px;   /* pulls it right to align visually */
   }
 
   @media(max-width: 700px) {
@@ -90,6 +92,46 @@
 .num-edit:focus {
   outline: 1px solid #bbb;
   background: #fff;
+}
+
+
+.results p + p {
+  margin-top: 2px;     /* tiny breathing room between items */
+}
+
+.results {
+  margin-top: 12px;    /* space above block */
+}
+
+.card {
+  border: 1px solid #999;
+  border-radius: 4px;
+  padding: 10px 14px;
+  background: white;
+}
+
+.results.card ul {
+  padding-left: 18px;   /* gentle indent */
+  margin: 8px 0;
+}
+
+.results.card li {
+  margin: 4px 0;
+  line-height: 1.28;
+}
+
+.results-box ul {
+  margin: 6px 0 4px 0;
+  padding-left: 20px;
+}
+
+.results-box li {
+  margin: 3px 0;
+  line-height: 1.28;
+}
+
+.results-box li::marker {
+  color: #777;
 }
 
 </style>
@@ -184,13 +226,19 @@
 </div>
 
 
-<div class="results">
-  <h3>Results</h3>
-  <p><strong>Preferred Modes:</strong> <span id="func-text">?</span></p>
-  <p><strong>Code:</strong> <span id="type-code">????</span></p>
-  <p><strong>Link:</strong> <span id="link-url">?</span></p>
-</div>
 
+<fieldset class="graphic-box results-box">
+  <legend>Results</legend>
+
+  <ul>
+    <li><strong>Preferred Modes:</strong> <span id="func-text">?</span></li>
+    <li><strong>Code:</strong> <span id="type-code">????</span></li>
+    <li><strong>Attitude Position:</strong> <span id="attitude-pos">?</span></li>
+    <li><strong>Mode Signature:</strong> <span id="mode-signature">?</span></li>
+    <li><strong>Link:</strong> <span id="link-url">?</span></li>
+  </ul>
+
+</fieldset>  
 
 
 <script>
@@ -268,6 +316,33 @@ function typeCode(av) {
          pick(av.t,"T","F") + pick(av.j,"J","P");
 }
 
+function computeModeSignature(funcs) {
+  const clusters = {
+    "Extraverted Perceiving (Se/Ne)": funcs.Se + funcs.Ne,
+    "Introverted Perceiving (Si/Ni)": funcs.Si + funcs.Ni,
+    "Extraverted Judging (Te/Fe)": funcs.Te + funcs.Fe,
+    "Introverted Judging (Ti/Fi)": funcs.Ti + funcs.Fi
+  };
+
+  // Sort clusters by strength
+  const entries = Object.entries(clusters).sort((a,b)=>b[1]-a[1]);
+  
+  const [topName, topVal] = entries[0];
+  const [secondName, secondVal] = entries[1];
+
+  // Strength percentage (0 = baseline, 100 = max)
+  const pct = Math.round((topVal * 100));
+
+  let summary = `${topName}`;
+
+  // If second is strong, mention it
+  if ((topVal - secondVal) < 0.08) {  // within 8%
+    summary += ` with ${secondName.toLowerCase()} as secondary`;
+  }
+
+  return summary;
+}
+
 function render() {
   const av = axisValues();
   const funcs = computeFunctions(av);
@@ -281,6 +356,11 @@ function render() {
   document.getElementById("f-val").textContent = Math.round(av.f*100);
   document.getElementById("j-val").textContent = Math.round(av.j*100);
   document.getElementById("p-val").textContent = Math.round((1-av.j)*100);
+
+  document.getElementById("attitude-pos").textContent = attitudeLabel(av);
+
+  document.getElementById("mode-signature").textContent =
+    computeModeSignature(funcs);
 
   updateBars(funcs);
   updateDot(av);
@@ -389,6 +469,42 @@ function loadFromURL() {
       }
     }
   });
+}
+
+
+function attitudeLabel(av) {
+  const e = av.e;
+  const j = av.j;
+
+  // Balanced means too close to the midpoint to justify a quadrant label
+  const BAL = 0.45;  // you can tighten or loosen this
+
+  const eBalanced = (e > BAL && e < (1 - BAL));   // around 0.50
+  const jBalanced = (j > BAL && j < (1 - BAL)); 
+
+  let vert, horiz, quadrant = null;
+
+  // Human-readable orientation text
+  vert = (e > 0.65) ? "Extraverted"
+      : (e < 0.35) ? "Introverted"
+      : "Balanced E/I";
+
+  horiz = (j > 0.65) ? "Judging-oriented"
+        : (j < 0.35) ? "Perceiving-oriented"
+        : "Balanced J/P";
+
+  // Only assign Wilde quadrant if *both* axes are meaningfully polarized
+  if (!eBalanced && !jBalanced) {
+    if (e > 0.5 && j > 0.5) quadrant = "Ej (Control)";
+    else if (e > 0.5 && j <= 0.5) quadrant = "Ep (Exploration)";
+    else if (e <= 0.5 && j > 0.5) quadrant = "Ij (Focus)";
+    else quadrant = "Ip (Appraisal)";
+  }
+
+  // If there is a quadrant, include it. Otherwise just descriptors.
+  return quadrant
+    ? `${vert}, ${horiz} — ${quadrant}`
+    : `${vert}, ${horiz}`;
 }
 
 loadFromURL();
