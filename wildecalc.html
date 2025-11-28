@@ -80,6 +80,18 @@
   color: #444;
 }
 
+.num-edit {
+  display: inline-block;
+  min-width: 24px;
+  padding: 2px 3px;
+  border-radius: 4px;
+}
+
+.num-edit:focus {
+  outline: 1px solid #bbb;
+  background: #fff;
+}
+
 </style>
 </head>
 
@@ -100,28 +112,40 @@
   <div class="card">
     <div class="labelrow"><span>E</span><span>I</span></div>
     <input type="range" min="0" max="100" value="50" id="ei">
-    <div class="nums"><span id="e-val">50</span> / <span id="i-val">50</span></div>
+    <div class="nums">
+      <span id="e-val" class="num-edit" data-axis="ei" data-side="e" contenteditable="true">50</span> /
+      <span id="i-val" class="num-edit" data-axis="ei" data-side="i" contenteditable="true">50</span>
+    </div>
   </div>
 
   <!-- S–N -->
   <div class="card">
     <div class="labelrow"><span>S</span><span>N</span></div>
     <input type="range" min="0" max="100" value="50" id="sn">
-    <div class="nums"><span id="s-val">50</span> / <span id="n-val">50</span></div>
+    <div class="nums">
+      <span id="s-val" class="num-edit" data-axis="sn" data-side="n" contenteditable="true">50</span> /
+      <span id="n-val" class="num-edit" data-axis="sn" data-side="s" contenteditable="true">50</span>
+    </div>
   </div>
 
   <!-- T–F -->
   <div class="card">
     <div class="labelrow"><span>T</span><span>F</span></div>
     <input type="range" min="0" max="100" value="50" id="tf">
-    <div class="nums"><span id="t-val">50</span> / <span id="f-val">50</span></div>
+    <div class="nums">
+      <span id="t-val" class="num-edit" data-axis="tf" data-side="t" contenteditable="true">50</span> /
+      <span id="f-val" class="num-edit" data-axis="tf" data-side="f" contenteditable="true">50</span>
+    </div>
   </div>
 
   <!-- J–P -->
   <div class="card">
     <div class="labelrow"><span>J</span><span>P</span></div>
     <input type="range" min="0" max="100" value="50" id="jp">
-    <div class="nums"><span id="j-val">50</span> / <span id="p-val">50</span></div>
+    <div class="nums">
+      <span id="j-val" class="num-edit" data-axis="jp" data-side="j" contenteditable="true">50</span> /
+      <span id="p-val" class="num-edit" data-axis="jp" data-side="p" contenteditable="true">50</span>
+    </div>
   </div>
 
 </div>
@@ -263,6 +287,58 @@ function render() {
 
 document.querySelectorAll("input[type=range]").forEach(r => {
   r.addEventListener("input", render);
+});
+
+
+document.querySelectorAll('.num-edit').forEach(el => {
+  el.addEventListener('blur', () => {
+    let v = parseInt(el.textContent, 10);
+    if (isNaN(v)) v = 50;
+    v = Math.max(0, Math.min(100, v));
+
+    const axis = el.dataset.axis;   // "ei", "sn", "tf", "jp"
+    const side = el.dataset.side;   // "e" or "i", "s" or "n", etc.
+    const slider = document.getElementById(axis);
+
+    // Convert axis value into slider thumb value
+    // Slider direction: left = first letter (0), right = second letter (100)
+    //
+    // Example: axis "tf":
+    //   - T is the *left* pole (so slider.value = 100 - T)
+    //   - F is the *right* pole (so slider.value = F)
+    //
+
+    // Determine which pole is left or right for this axis
+    const leftPole  = axis[0];   // e, s, t, j
+    const rightPole = axis[1];   // i, n, f, p
+
+    let sliderValue;
+
+    if (side === leftPole) {
+      // If editing left pole, slider should move right when value is LOW
+      sliderValue = 100 - v;
+    } else {
+      // Editing right pole directly maps to slider
+      sliderValue = v;
+    }
+
+    // Clamp
+    sliderValue = Math.max(0, Math.min(100, sliderValue));
+    slider.value = sliderValue;
+
+    // Now update the opposite side’s displayed text
+    const otherSide = (side === leftPole) ? rightPole : leftPole;
+    const otherEl = el.parentElement.querySelector(`.num-edit[data-side="${otherSide}"]`);
+
+    const otherVal =
+      (side === leftPole) ? (100 - v)
+                          : (100 - v);
+
+    otherEl.textContent = otherVal;
+
+    // Finally refresh entire UI
+    render();
+  });
 });
 
 render(); // initial
