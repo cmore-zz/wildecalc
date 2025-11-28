@@ -188,7 +188,10 @@
   <h3>Results</h3>
   <p><strong>Preferred Modes:</strong> <span id="func-text">?</span></p>
   <p><strong>Code:</strong> <span id="type-code">????</span></p>
+  <p><strong>Link:</strong> <span id="link-url">?</span></p>
 </div>
+
+
 
 <script>
 /* ---------- Helpers ---------- */
@@ -282,6 +285,7 @@ function render() {
   updateBars(funcs);
   updateDot(av);
   updateText(funcs);
+  updateLink();
   document.getElementById("type-code").textContent = typeCode(av);
 }
 
@@ -341,6 +345,53 @@ document.querySelectorAll('.num-edit').forEach(el => {
   });
 });
 
+function updateLink() {
+  const av = axisValues();   // uses your existing function
+  const params = new URLSearchParams();
+
+  // raw 0–100 values
+  const i = Math.round(av.i * 100);
+  const n = Math.round(av.n * 100);
+  const f = Math.round(av.f * 100);
+  const p = Math.round((1 - av.j) * 100);  // p = 1 - j
+
+  params.set("i", i);
+  params.set("n", n);
+  params.set("f", f);
+  params.set("p", p);
+
+  // construct a link based on current page URL
+  const base = window.location.href.split("?")[0];
+  const url = `${base}?${params.toString()}`;
+
+  document.getElementById("link-url").innerHTML =
+    `<a href="${url}">${url}</a>`;
+}
+
+function loadFromURL() {
+  const p = new URLSearchParams(window.location.search);
+
+  const axes = ["i","n","f","p"];  // the four encoded params
+  const mapping = { i:"ei", n:"sn", f:"tf", p:"jp" };
+
+  axes.forEach(ax => {
+    if (p.has(ax)) {
+      const raw = Number(p.get(ax));  // 0–100
+      const sliderId = mapping[ax];
+      const slider = document.getElementById(sliderId);
+
+      if (ax === "p") {
+        // p = 100−j
+        slider.value = raw;  // slider.value is P-side (right pole)
+      } else {
+        // left side uses inverted encoding
+        slider.value = 100 - raw;
+      }
+    }
+  });
+}
+
+loadFromURL();
 render(); // initial
 </script>
 
